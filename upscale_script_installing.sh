@@ -8,9 +8,11 @@ COMFYUI_DIR=${WORKSPACE}/ComfyUI
 # ======================================================
 
 APT_PACKAGES=(
+    "aria2"  # (Optional) Faster downloads if script uses it, handled by wget usually but good to have
 )
 
 PIP_PACKAGES=(
+    "huggingface_hub"
 )
 
 # -------------------------
@@ -25,6 +27,7 @@ NODES=(
     "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git"
     "https://github.com/cubiq/ComfyUI_essentials.git"
     "https://github.com/ClownsharkBatwing/RES4LYF.git"
+    "https://github.com/city96/ComfyUI-GGUF.git" # Added this for proper GGUF support
 )
 
 # -------------------------
@@ -34,16 +37,14 @@ NODES=(
 CHECKPOINT_MODELS=(
 )
 
+# Fix: Wan2.2 GGUF should go to models/unet or models/diffusion_models
 UNET_MODELS=(
-    # Wan2.2 GGUF (To: Unet/controlnet)
     "https://huggingface.co/bullerwins/Wan2.2-T2V-A14B-GGUF/resolve/main/wan2.2_t2v_low_noise_14B_Q8_0.gguf"
 )
 
+# Fix: Loras should go to models/loras
 LORA_MODELS=(
-    # Wan2.2 Lightning Low Noise
     "https://huggingface.co/lightx2v/Wan2.2-Lightning/resolve/main/Wan2.2-T2V-A14B-4steps-lora-250928/low_noise_model.safetensors"
-
-    # Civitai File (download via CIVITAI_TOKEN)
     "https://civitai.com/api/download/models/2179627"
 )
 
@@ -75,16 +76,19 @@ function provisioning_start() {
     provisioning_get_nodes
     provisioning_get_pip_packages
 
+    # Correct Path: models/checkpoints
     provisioning_get_files \
         "${COMFYUI_DIR}/models/checkpoints" \
         "${CHECKPOINT_MODELS[@]}"
 
+    # Correct Path: models/unet (Standard for Wan2.1/2.2 Unets)
     provisioning_get_files \
-        "${COMFYUI_DIR}/Unet/controlnet" \
+        "${COMFYUI_DIR}/models/unet" \
         "${UNET_MODELS[@]}"
 
+    # Correct Path: models/loras
     provisioning_get_files \
-        "${COMFYUI_DIR}/loras/controlnet" \
+        "${COMFYUI_DIR}/models/loras" \
         "${LORA_MODELS[@]}"
 
     provisioning_get_files \
@@ -92,13 +96,14 @@ function provisioning_start() {
         "${VAE_MODELS[@]}"
 
     provisioning_get_files \
-        "${COMFYUI_DIR}/models/esrgans" \
+        "${COMFYUI_DIR}/models/esrgan" \
         "${ESRGAN_MODELS[@]}"
 
     provisioning_get_files \
         "${COMFYUI_DIR}/models/controlnet" \
         "${CONTROLNET_MODELS[@]}"
 
+    # Correct Path: models/text_encoders (Changed from models/clip in some setups, but text_encoders is safer for T5)
     provisioning_get_files \
         "${COMFYUI_DIR}/models/text_encoders" \
         "${TEXT_ENCODER_MODELS[@]}"
@@ -108,7 +113,8 @@ function provisioning_start() {
 
 function provisioning_get_apt_packages() {
     if [[ -n $APT_PACKAGES ]]; then
-        sudo $APT_INSTALL ${APT_PACKAGES[@]}
+        sudo apt-get update
+        sudo apt-get install -y ${APT_PACKAGES[@]}
     fi
 }
 
@@ -186,4 +192,3 @@ function provisioning_download() {
 if [[ ! -f /.noprovisioning ]]; then
     provisioning_start
 fi
-
